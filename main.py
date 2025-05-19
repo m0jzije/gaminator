@@ -10,8 +10,9 @@ import random
 templates = Jinja2Templates(directory="templates")
 
 # Neo4j Connection Info
-URI = "URI"
-AUTH = ("username", "password")
+URI = "neo4j+s://c14f5bac.databases.neo4j.io"
+AUTH = ("neo4j", "VX0KIEY0nrvKihZ4T_pQJPXnbjY_sjtZc8Q3OwHR2uY")
+
 
 # Question configuration
 QUESTION_POOL = [
