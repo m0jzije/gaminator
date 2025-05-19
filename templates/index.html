@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎮 Game Recommender</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #6c5ce7;
+      --secondary: #a29bfe;
+      --accent: #fd79a8;
+      --dark: #2d3436;
+      --light: #f5f6fa;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      color: var(--light);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem;
+    }
+    
+    .container {
+      max-width: 800px;
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 2rem;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    h1 {
+      text-align: center;
+      margin-bottom: 1rem;
+      color: var(--accent);
+      font-size: 2.5rem;
+    }
+    
+    .subtitle {
+      text-align: center;
+      color: var(--secondary);
+      margin-bottom: 2rem;
+    }
+    
+    .btn {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: 600;
+      margin: 0.5rem;
+    }
+    
+    .btn:hover {
+      background: var(--secondary);
+      transform: translateY(-3px);
+    }
+    
+    .btn:active {
+      transform: translateY(1px);
+    }
+    
+    .question-container {
+      margin: 2rem 0;
+      text-align: center;
+    }
+    
+    .question-text {
+      font-size: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .answer-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    
+    .btn-answer {
+      min-width: 120px;
+    }
+    
+    .btn-yes {
+      background: #00b894;
+    }
+    
+    .btn-no {
+      background: #d63031;
+    }
+    
+    .btn-maybe {
+      background: #fdcb6e;
+      color: var(--dark);
+    }
+    
+    .results-container {
+      display: none;
+      margin-top: 2rem;
+    }
+    
+    .game-card {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    
+    .game-image {
+      width: 120px;
+      height: 60px;
+      border-radius: 5px;
+      object-fit: cover;
+    }
+    
+    .game-info {
+      flex: 1;
+    }
+    
+    .game-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    
+    .match-score {
+      color: var(--secondary);
+      font-size: 0.9rem;
+    }
+    
+    .progress-container {
+      width: 100%;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 5px;
+      margin: 1rem 0;
+      overflow: hidden;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎮 Game Recommender</h1>
+    <p class="subtitle">Answer a few questions to get personalized game recommendations</p>
+    
+    <div class="question-container" id="question-container">
+      <div class="question-text" id="question-text"></div>
+      <div class="answer-buttons">
+        <button class="btn btn-answer btn-yes" id="btn-yes">Yes</button>
+        <button class="btn btn-answer btn-no" id="btn-no">No</button>
+        <button class="btn btn-answer btn-maybe" id="btn-maybe">Not Sure</button>
+      </div>
+      <div class="progress-container">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+    </div>
+    
+    <div class="results-container" id="results-container">
+      <h2>Recommended For You</h2>
+      <div id="recommendations-list"></div>
+      <button class="btn" id="btn-restart">Start Over</button>
+    </div>
+    
+    <button class="btn" id="btn-start" style="display: block;">Start Questionnaire</button>
+  </div>
+
+  <script>
+    // Game state
+    const gameState = {
+      answers: [],
+      currentQuestion: null,
+      questionsAnswered: 0,
+      totalQuestions: 8 // We'll ask 8 questions
+    };
+    
+    // DOM elements
+    const startBtn = document.getElementById('btn-start');
+    const questionContainer = document.getElementById('question-container');
+    const questionText = document.getElementById('question-text');
+    const yesBtn = document.getElementById('btn-yes');
+    const noBtn = document.getElementById('btn-no');
+    const maybeBtn = document.getElementById('btn-maybe');
+    const progressBar = document.getElementById('progress-bar');
+    const resultsContainer = document.getElementById('results-container');
+    const recommendationsList = document.getElementById('recommendations-list');
+    const restartBtn = document.getElementById('btn-restart');
+    
+    // Initialize
+    questionContainer.style.display = 'none';
+    resultsContainer.style.display = 'none';
+    
+    // Event listeners
+    startBtn.addEventListener('click', startQuestionnaire);
+    yesBtn.addEventListener('click', () => answerQuestion('yes'));
+    noBtn.addEventListener('click', () => answerQuestion('no'));
+    maybeBtn.addEventListener('click', () => answerQuestion('maybe'));
+    restartBtn.addEventListener('click', resetQuestionnaire);
+    
+    // Start the questionnaire
+    async function startQuestionnaire() {
+      startBtn.style.display = 'none';
+      questionContainer.style.display = 'block';
+      await getNextQuestion();
+    }
+    
+    // Get the next question
+    async function getNextQuestion() {
+      try {
+        const response = await fetch('/get_question', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const data = await response.json();
+        gameState.currentQuestion = data.question;
+        questionText.textContent = `${gameState.currentQuestion.emoji || '🎮'} ${gameState.currentQuestion.text}`;
+        updateProgress();
+      } catch (error) {
+        console.error('Error getting question:', error);
+        showError();
+      }
+    }
+    
+    // Answer the current question
+    async function answerQuestion(answer) {
+      gameState.answers.push({
+        type: gameState.currentQuestion.type,
+        key: gameState.currentQuestion.key,
+        value: answer
+      });
+      
+      gameState.questionsAnswered++;
+      
+      if (gameState.questionsAnswered >= gameState.totalQuestions) {
+        await getRecommendations();
+      } else {
+        await getNextQuestion();
+      }
+    }
+    
+    // Get recommendations based on answers
+    async function getRecommendations() {
+      try {
+        const response = await fetch('/get_recommendations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ answers: gameState.answers })
+        });
+        
+        const data = await response.json();
+        showRecommendations(data.recommendations);
+      } catch (error) {
+        console.error('Error getting recommendations:', error);
+        showError();
+      }
+    }
+    
+    // Display recommendations
+    function showRecommendations(recommendations) {
+      questionContainer.style.display = 'none';
+      resultsContainer.style.display = 'block';
+      
+      recommendationsList.innerHTML = '';
+      
+      recommendations.forEach(game => {
+        const gameCard = document.createElement('div');
+        gameCard.className = 'game-card';
+        
+        gameCard.innerHTML = `
+          <img class="game-image" src="${game.cover_url || 'https://via.placeholder.com/120x60?text=No+Image'}" alt="${game.name}">
+          <div class="game-info">
+            <div class="game-title">${game.name}</div>
+            ${game.match_score > 0 ? `<div class="match-score">Match: ${game.match_score * 20}%</div>` : ''}
+            ${game.is_fallback ? `<div class="match-score">Popular Choice</div>` : ''}
+          </div>
+        `;
+        
+        recommendationsList.appendChild(gameCard);
+      });
+    }
+    
+    // Update progress bar
+    function updateProgress() {
+      const progress = (gameState.questionsAnswered / gameState.totalQuestions) * 100;
+      progressBar.style.width = `${progress}%`;
+    }
+    
+    // Show error message
+    function showError() {
+      questionContainer.style.display = 'none';
+      resultsContainer.style.display = 'block';
+      recommendationsList.innerHTML = `
+        <div style="text-align: center; padding: 2rem;">
+          <h3>Oops! Something went wrong.</h3>
+          <p>We couldn't get recommendations right now. Please try again later.</p>
+        </div>
+      `;
+    }
+    
+    // Reset the questionnaire
+    function resetQuestionnaire() {
+      gameState.answers = [];
+      gameState.questionsAnswered = 0;
+      gameState.currentQuestion = null;
+      
+      resultsContainer.style.display = 'none';
+      startBtn.style.display = 'block';
+      progressBar.style.width = '0%';
+    }
+  </script>
+</body>
+</html>
