@@ -28,6 +28,8 @@ QUESTION_POOL = [
     {"type": "tag", "key": "fantasy", "text": "Do you prefer fantasy settings?", "emoji": "🧙"},
     {"type": "tag", "key": "sci_fi", "text": "Do you like sci-fi themes?", "emoji": "🚀"},
     {"type": "tag", "key": "indie", "text": "Do you enjoy indie games?", "emoji": "🎨"},
+    {"type": "numeric", "key": "playtime", "text": "Do you prefer short (<10h) or long games?", "emoji": "⏱️"},
+    {"type": "genre", "key": "atmosphere", "text": "Do you prefer dark or lighthearted games?", "emoji": "🎭"}
 ]
 
 # Function to run Cypher queries
@@ -48,46 +50,92 @@ async def root(request: Request):
 async def start_game():
     return {"message": "Ready to recommend games!"}
 
+def process_results(results):
+    recommendations = []
+    for game in results:
+        steam_id = game["steam_link"].split("/")[-1] if game.get("steam_link") else None
+        cover_url = f"https://cdn.akamai.steamstatic.com/steam/apps/{steam_id}/header.jpg" if steam_id else None
+        
+        recommendations.append({
+            "name": game["name"],
+            "steam_link": game.get("steam_link"),
+            "cover_url": cover_url,
+            "match_score": game.get("match_score", 0)  # Added match_score if available
+        })
+    return recommendations
+
 @app.post("/get_question")
-async def get_question():
-    # Return a random question from the pool
-    question = random.choice(QUESTION_POOL)
+async def get_question(request: Request):
+    data = await request.json()
+    answered_questions = [q["key"] for q in data.get("answers", [])]
+    
+    # Filter out already-asked questions
+    available_questions = [
+        q for q in QUESTION_POOL 
+        if q["key"] not in answered_questions
+    ]
+    
+    if not available_questions:
+        return {"question": None}  # End if no questions left
+    
+    # Prioritize questions that best split remaining candidates
+    if data.get("candidates"):
+        question = find_optimal_question(available_questions, data["candidates"])
+    else:
+        question = random.choice(available_questions)
+    
     return {"question": question}
+
+def find_optimal_question(questions, candidate_ids):
+    # Find the question that most evenly splits remaining games
+    best_question = None
+    best_score = -1
+    
+    for question in questions:
+        if question["type"] == "tag":
+            tag = question["key"].replace("_", " ").title()
+            result = run_query("""
+                MATCH (g:Game)-[:HAS_TAG]->(:Tag {name: $tag})
+                WHERE g.id IN $candidates
+                RETURN count(g) AS count
+                """, {"tag": tag, "candidates": candidate_ids})
+            
+            yes_count = result[0]["count"] if result else 0
+            split_ratio = abs(yes_count / len(candidate_ids) - 0.5)
+            
+            if split_ratio > best_score:
+                best_score = split_ratio
+                best_question = question
+    
+    return best_question or random.choice(questions)
 
 @app.post("/get_recommendations")
 async def get_recommendations(request: Request):
     data = await request.json()
     answers = data.get("answers", [])
     
-    # Build query based on user answers
+    # Base query
     query = """
     MATCH (g:Game)
     WHERE 1=1
     """
     
-    params = {}
-    must_conditions = []
-    should_conditions = []
+    # Apply tag filters
+    for answer in answers:
+        if answer["type"] == "tag" and answer["value"] == "yes":
+            tag = answer["key"].replace("_", " ").title()
+            query += f"\nAND (g)-[:HAS_TAG]->(:Tag {{name: '{tag}'}})"
     
-    for idx, answer in enumerate(answers):
-        if answer["type"] == "tag":
-            if answer["value"] == "yes":
-                must_conditions.append(f"(g)-[:HAS_TAG]->(:Tag {{name: '{answer['key'].replace('_', ' ').title()}'}})")
-            elif answer["value"] == "no":
-                must_conditions.append(f"NOT (g)-[:HAS_TAG]->(:Tag {{name: '{answer['key'].replace('_', ' ').title()}'}})")
-    
-    if must_conditions:
-        query += " AND " + " AND ".join(must_conditions)
-    
+    # Add diversity with randomness and popularity
     query += """
-    OPTIONAL MATCH (g)-[:HAS_TAG]->(t)
-    WITH g, count(t) AS match_score
-    RETURN g.name AS name, g.steam_link AS steam_link, match_score
-    ORDER BY match_score DESC, g.popularity DESC
-    LIMIT 5
+    WITH g, rand() AS r
+    ORDER BY g.popularity DESC, r
+    LIMIT 20
+    RETURN g.name AS name, g.steam_link AS steam_link
     """
     
-    result = run_query(query, params)
+    results = run_query(query)
+    return {"recommendations": process_results(results)}
     
     recommendations = []
     for game in result:
