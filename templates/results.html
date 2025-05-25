@@ -1,0 +1,65 @@
+<!-- templates/results.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Game Recommendations | Gaminator</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🎮 Gaminator</h1>
+            <nav>
+                <a href="/profile">Profile</a>
+                <a href="/quiz">Take Quiz</a>
+                <a href="/logout">Logout</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container">
+        <h2>Your Game Recommendations</h2>
+        
+        {% if archetype %}
+        <section class="archetype-section">
+            <h3>Your Gamer Archetype: {{ archetype.name }}</h3>
+            <p>{{ archetype.description }}</p>
+            <div class="traits">
+                {% for trait in archetype.traits %}
+                <span class="trait">{{ trait }}</span>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+        
+        <section class="recommendations">
+            <h3>Top Games For You</h3>
+            <div class="game-grid">
+                {% for game in games %}
+                <div class="game-card">
+                    <h4>{{ game.name }}</h4>
+                    <div class="game-stats">
+                        <span>Match: {{ "%.0f"|format(game.tag_relevance) }}%</span>
+                        <span>${{ game.price }}</span>
+                        <span>⭐ {{ game.review_score }}/100</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        
+        <div class="actions">
+            <a href="/quiz" class="btn">Retake Quiz</a>
+            <a href="/profile" class="btn secondary">View Profile</a>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2023 Gaminator - The Psychic Game Recommendation Engine</p>
+        </div>
+    </footer>
+</body>
+</html>

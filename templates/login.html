@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | Gaminator</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🎮 Gaminator</h1>
+            <nav>
+                <a href="/">Home</a>
+                <a href="/register">Register</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container auth-container">
+        <section class="auth-card">
+            <h2>Login to Your Account</h2>
+            
+            {% if error %}
+            <div class="alert error">
+                {{ error }}
+            </div>
+            {% endif %}
+            
+            <form action="/login" method="post">
+                <input type="hidden" name="next_url" value="{{ next_url or '/' }}">
+                
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <button type="submit" class="btn">Login</button>
+            </form>
+            
+            <div class="auth-links">
+                <p>Don't have an account? <a href="/register">Register here</a></p>
+                <p>Just browsing? <a href="/guest">Continue as Guest</a></p>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2023 Gaminator - The Psychic Game Recommendation Engine</p>
+        </div>
+    </footer>
+</body>
+</html>

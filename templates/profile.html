@@ -1,0 +1,79 @@
+<!-- templates/profile.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Profile | Gaminator</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🎮 Gaminator</h1>
+            <nav>
+                <a href="/profile">Profile</a>
+                <a href="/quiz">Take Quiz</a>
+                <a href="/logout">Logout</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container profile-container">
+        <section class="profile-header">
+            <h2>Welcome, {{ user.username }}</h2>
+            {% if user.steam_id %}
+            <p class="steam-connected">Connected with Steam</p>
+            {% else %}
+            <button class="btn steam-connect">Connect Steam Account</button>
+            {% endif %}
+        </section>
+        
+        {% if archetype %}
+        <section class="archetype-section">
+            <h3>Your Gamer Archetype</h3>
+            <div class="archetype-card">
+                <h4>{{ archetype.name }}</h4>
+                <p>{{ archetype.description }}</p>
+                <div class="traits">
+                    {% for trait in archetype.traits %}
+                    <span class="trait">{{ trait }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+        {% endif %}
+        
+        <section class="game-history">
+            <h3>Your Recent Games</h3>
+            {% if game_history %}
+            <div class="history-grid">
+                {% for game in game_history %}
+                <div class="history-card">
+                    <h4>{{ game.game_name }}</h4>
+                    <div class="game-meta">
+                        <span>Played: {{ game.played_at[:10] }}</span>
+                        {% if game.rating %}
+                        <span>Rating: {{ "⭐" * game.rating }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p>No game history yet. Take the quiz to get recommendations!</p>
+            {% endif %}
+        </section>
+        
+        <div class="actions">
+            <a href="/quiz" class="btn">Take Quiz Again</a>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2023 Gaminator - The Psychic Game Recommendation Engine</p>
+        </div>
+    </footer>
+</body>
+</html>

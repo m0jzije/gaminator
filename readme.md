@@ -78,15 +78,13 @@ NEO4J_USER=neo4j
 NEO4J_PASSWORD=your-password
 ```
 
-### 4. Import Game Data
-
-Run the import script to populate your Neo4j database with game data:
-
-```bash
-python scripts/import_data.py
+### 4. Start 
+  Run this command:
+```terminal
+  python -m uvicorn main:app --reload
 ```
-
----
+and go to localhost:8000 in your web browser.
+Enjoy
 
 ## Conclusion
 

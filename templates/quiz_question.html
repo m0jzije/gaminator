@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Question {{ question_num }}/{{ total_questions }} | Gaminator</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        /* Progress bar styles */
+        .quiz-progress {
+            margin: 2rem 0 1.5rem;
+        }
+        .progress-track {
+            background: #f0f0f0;
+            height: 8px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .progress-bar {
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s ease;
+        }
+        /* Pre-defined width classes */
+        .progress-0 { width: 0%; }
+        .progress-5 { width: 5%; }
+        .progress-10 { width: 10%; }
+        .progress-15 { width: 15%; }
+        .progress-20 { width: 20%; }
+        .progress-25 { width: 25%; }
+        .progress-30 { width: 30%; }
+        .progress-35 { width: 35%; }
+        .progress-40 { width: 40%; }
+        .progress-45 { width: 45%; }
+        .progress-50 { width: 50%; }
+        .progress-55 { width: 55%; }
+        .progress-60 { width: 60%; }
+        .progress-65 { width: 65%; }
+        .progress-70 { width: 70%; }
+        .progress-75 { width: 75%; }
+        .progress-80 { width: 80%; }
+        .progress-85 { width: 85%; }
+        .progress-90 { width: 90%; }
+        .progress-95 { width: 95%; }
+        .progress-100 { width: 100%; }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🎮 Gaminator</h1>
+            <nav>
+                {% if not user.is_guest %}<a href="/profile">Profile</a>{% endif %}
+                <a href="/logout">Logout</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container quiz-container">
+        <form action="/quiz/answer" method="post">
+            <input type="hidden" name="question_index" value="{{ question_num - 1 }}">
+            
+            <!-- Progress bar with class-based width -->
+            {% set progress_percent = ((question_num / total_questions) * 100)|round(0, 'floor')|int %}
+            {% set progress_class = 'progress-' ~ (progress_percent // 5 * 5) %}
+            <div class="quiz-progress">
+                <div class="progress-track">
+                    <div class="progress-bar {{ progress_class }}"></div>
+                </div>
+                <div class="progress-text">Question {{ question_num }} of {{ total_questions }}</div>
+            </div>
+            
+            <div class="question-card">
+                <h3>{{ question.text }}</h3>
+                
+                <div class="rating-options">
+                    <label>
+                        <input type="radio" name="answer" value="1" required>
+                        <span>1 - Strongly Disagree</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="answer" value="2">
+                        <span>2 - Disagree</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="answer" value="3">
+                        <span>3 - Neutral</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="answer" value="4">
+                        <span>4 - Agree</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="answer" value="5">
+                        <span>5 - Strongly Agree</span>
+                    </label>
+                </div>
+            </div>
+            
+            <button type="submit" class="btn">
+                {% if question_num == total_questions %}Get Results{% else %}Next Question{% endif %}
+            </button>
+        </form>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2023 Gaminator - The Psychic Game Recommendation Engine</p>
+        </div>
+    </footer>
+</body>
+</html>

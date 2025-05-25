@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Start Quiz | Gaminator</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>🎮 Gaminator</h1>
+            <nav>
+                <a href="/profile">Profile</a>
+                <a href="/logout">Logout</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="container quiz-container">
+        <section class="quiz-intro">
+            <h2>Game Preference Quiz</h2>
+            <p>We'll ask you {{ total_questions }} questions to understand your gaming preferences.</p>
+            <p>Answer honestly based on how much you agree with each statement.</p>
+            
+            <div class="quiz-progress">
+                <div class="progress-bar" style="width: 0%"></div>
+            </div>
+            
+            <a href="/quiz/next" class="btn">Start Quiz</a>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>© 2023 Gaminator - The Psychic Game Recommendation Engine</p>
+        </div>
+    </footer>
+</body>
+</html>
