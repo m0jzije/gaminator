@@ -10,6 +10,7 @@ import secrets
 from pydantic import BaseModel
 from typing import Optional
 import uuid
+import python_multipart
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -286,84 +287,59 @@ async def quiz_next(request: Request):
 async def quiz_answer(request: Request):
     user = db.validate_session(request.cookies.get("session_id"))
     if not user:
-        raise HTTPException(status_code=401)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     
     form_data = await request.form()
     answer = int(form_data.get("answer"))
     question_index = int(form_data.get("question_index"))
     
-    # Store answer
+    # Store answer as simple properties
     db._execute_query("""
         MATCH (u:User {id: $user_id})
-        SET u.current_quiz_index = $next_index,
-            u.quiz_answers = coalesce(u.quiz_answers, []) + [$answer]
-    """, user_id=user["id"], 
-       next_index=question_index + 1,
-       answer={"index": question_index, "value": answer})
+        SET u.current_quiz_index = $next_index
+        WITH u
+        CALL apoc.do.when(
+            u.quiz_answers IS NULL,
+            'SET u.quiz_answers = [$answer] RETURN u',
+            'SET u.quiz_answers = u.quiz_answers + $answer RETURN u',
+            {u:u, answer: $answer}
+        ) YIELD value
+        RETURN value.u
+    """, 
+    user_id=user["id"],
+    next_index=question_index + 1,
+    answer=answer)  # Store just the answer value
     
-    return RedirectResponse(url="/quiz/next", status_code=303)
+    return RedirectResponse(url="/quiz/next", status_code=status.HTTP_303_SEE_OTHER)
 
-@app.get("/quiz/results", response_class=HTMLResponse)
-async def quiz_results(request: Request):
-    user = db.validate_session(request.cookies.get("session_id"))
-    if not user:
-        raise HTTPException(status_code=401)
-    
-    # Get all answers
-    result = db._execute_query("""
-        MATCH (u:User {id: $user_id})
-        RETURN u.quiz_answers AS answers
-    """, user_id=user["id"])
-    
-    answers = [(a["value"], QUESTIONS[a["index"]]) for a in result[0]["answers"]]
-    
-    tag_scores = db.score_tags(answers)
-    filters = extract_filters(answers)
-    top_games = db.rank_games(tag_scores, filters)
-    
-    # Store results for guest users
-    if user.get("is_guest", False):
-        for game in top_games:
-            db.add_played_game(user["id"], game["name"], 5)
-    
-    archetype = db.get_gamer_archetype(user["id"])
-    
-    return templates.TemplateResponse("results.html", {
-        "request": request,
-        "user": user,
-        "games": top_games,
-        "archetype": archetype
-    })
-
-@app.post("/quiz/results")
+@app.get("/quiz/results")
 async def quiz_results(request: Request):
     user = db.validate_session(request.cookies.get("session_id"))
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED)
     
-    form_data = await request.form()
+    # Get answers as simple array
+    result = db._execute_query("""
+        MATCH (u:User {id: $user_id})
+        RETURN u.quiz_answers AS answers, u.current_quiz_index AS index
+    """, user_id=user["id"])
+    
+    if not result or not result[0]["answers"]:
+        raise HTTPException(status_code=400, detail="No quiz answers found")
+    
     answers = []
-    for q_id, answer in form_data.items():
-        if q_id.startswith('q_'):
-            q_index = int(q_id[2:])
-            answer_val = int(answer)
-            answers.append((answer_val, QUESTIONS[q_index]))
+    for i, answer_value in enumerate(result[0]["answers"]):
+        answers.append((answer_value, QUESTIONS[i]))  # Just store answer value
     
     tag_scores = db.score_tags(answers)
     filters = extract_filters(answers)
     top_games = db.rank_games(tag_scores, filters)
     
-    # Record these games as played (for archetype analysis)
-    for game in top_games:
-        db.add_played_game(user["id"], game["name"], 5)  # Assuming they'll like these
-    
-    archetype = db.get_gamer_archetype(user["id"])
-    
     return templates.TemplateResponse("results.html", {
         "request": request,
         "user": user,
         "games": top_games,
-        "archetype": archetype
+        "archetype": db.get_gamer_archetype(user["id"])
     })
 
 @app.get("/profile", response_class=HTMLResponse)
