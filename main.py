@@ -103,23 +103,26 @@ class Gaminator:
         return [{"tag": tag, "score": score} for tag, score in sorted(tag_scores.items(), key=lambda x: -x[1])]
     
     def rank_games(self, tag_scores, filters):
+        # Only use top N tags for strict matching
+        top_tags = [ts['tag'] for ts in tag_scores[:5]]
+        min_popularity = max(filters.get('min_popularity', 10000) or 10000, 10000)
+        min_score = max(filters.get('min_score', 75) or 75, 75)
+        filters = {k: v for k, v in filters.items() if k not in ('min_popularity', 'min_score')}
         result = self._execute_query("""
             UNWIND $tag_scores AS ts
             MATCH (g:Game)-[:HAS_TAG]->(t:Tag)
-            WHERE t.name = ts.tag
-            WITH g, SUM(ts.score) AS tag_relevance
-            WHERE
-              ($min_price IS NULL OR g.price >= $min_price) AND
-              ($max_price IS NULL OR g.price <= $max_price) AND
-              ($min_score IS NULL OR g.review_score >= $min_score) AND
-              ($max_score IS NULL OR g.review_score <= $max_score) AND
-              ($min_popularity IS NULL OR g.popularity >= $min_popularity) AND
-              ($min_year IS NULL OR g.release_date >= date($min_year + '-01-01')) AND
-              ($max_year IS NULL OR g.release_date <= date($max_year + '-12-31'))
-            RETURN g.name AS name, tag_relevance, g.price, g.review_score, g.popularity
-            ORDER BY tag_relevance DESC
-            LIMIT 5
-        """, tag_scores=tag_scores, **filters)
+            WHERE t.name = ts.tag AND t.name IN $top_tags
+            WITH g, COLLECT(t.name) AS matched_tags, SUM(ts.score) AS tag_relevance, COUNT(DISTINCT t.name) AS tag_count
+            WHERE tag_count >= 2 AND g.popularity >= $min_popularity AND g.review_score >= $min_score
+              AND ($min_price IS NULL OR g.price >= $min_price)
+              AND ($max_price IS NULL OR g.price <= $max_price)
+              AND ($max_score IS NULL OR g.review_score <= $max_score)
+              AND ($min_year IS NULL OR g.release_date >= date($min_year + '-01-01'))
+              AND ($max_year IS NULL OR g.release_date <= date($max_year + '-12-31'))
+            RETURN g.name AS name, tag_relevance, g.price, g.review_score, g.popularity, matched_tags, tag_count
+            ORDER BY tag_count DESC, tag_relevance DESC, g.popularity DESC, g.review_score DESC
+            LIMIT 10
+        """, tag_scores=tag_scores, top_tags=top_tags, min_popularity=min_popularity, min_score=min_score, **filters)
         return result if result else []
     
     # Game History & Archetypes
@@ -329,7 +332,7 @@ async def quiz_results(request: Request):
     
     answers = []
     for i, answer_value in enumerate(result[0]["answers"]):
-        answers.append((answer_value, QUESTIONS[i]))  # Just store answer value
+        answers.append((answer_value, QUESTIONS[i]))  
     
     tag_scores = db.score_tags(answers)
     filters = extract_filters(answers)
